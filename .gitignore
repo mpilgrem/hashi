@@ -1,7 +1,6 @@
-/Hashi.hi
-/Hashi.o
-/Heredoc.hi
-/Heredoc.o
-/solve
-/solve.hi
-/solve.o
+# Haskell Tool Stack-related
+.stack-work/
+*.yaml.lock
+
+# Solution files
+*.solution.eps

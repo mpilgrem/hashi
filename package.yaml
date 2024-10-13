@@ -1,0 +1,52 @@
+spec-version: 0.36.0
+
+verbatim:
+  cabal-version: 3.6
+
+name:                hashi
+version:             1.0
+github:              "mpilgrem/hashi"
+author:              "Mike Pilgrem"
+maintainer:          "public@pilgrem.com"
+license:             BSD-2-Clause-Views
+copyright:           "Copyright 2013 Harald Bögeholz"
+
+extra-source-files:
+- LICENSE.md
+- README.md
+
+description: Solver for Hashiwokakero puzzles written in Haskell.
+
+dependencies:
+- base >= 4.7 && < 5
+- array
+- containers
+- heredoc >= 0.1.0.0
+- template-haskell
+- text
+- text-show
+
+ghc-options:
+- -Wall
+- -Wcompat
+- -Widentities
+- -Wincomplete-record-updates
+- -Wincomplete-uni-patterns
+- -Wmissing-export-lists
+- -Wmissing-home-modules
+- -Wpartial-fields
+- -Wredundant-constraints
+
+library:
+  source-dirs: src
+
+executables:
+  hashi-solve:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - hashi

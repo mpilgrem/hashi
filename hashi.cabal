@@ -1,0 +1,59 @@
+cabal-version: 3.6
+
+-- This file has been generated from package.yaml by hpack version 0.37.0.
+--
+-- see: https://github.com/sol/hpack
+
+name:           hashi
+version:        1.0
+description:    Solver for Hashiwokakero puzzles written in Haskell.
+homepage:       https://github.com/mpilgrem/hashi#readme
+bug-reports:    https://github.com/mpilgrem/hashi/issues
+author:         Mike Pilgrem
+maintainer:     public@pilgrem.com
+copyright:      Copyright 2013 Harald Bögeholz
+license:        BSD-2-Clause-Views
+build-type:     Simple
+extra-source-files:
+    LICENSE.md
+    README.md
+
+source-repository head
+  type: git
+  location: https://github.com/mpilgrem/hashi
+
+library
+  exposed-modules:
+      Hashi
+      Hashi.Read
+      Hashi.Show
+      Hashi.State
+      Hashi.Types
+  hs-source-dirs:
+      src
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
+  build-depends:
+      array
+    , base >=4.7 && <5
+    , containers
+    , heredoc >=0.1.0.0
+    , template-haskell
+    , text
+    , text-show
+  default-language: Haskell2010
+
+executable hashi-solve
+  main-is: Main.hs
+  hs-source-dirs:
+      app
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      array
+    , base >=4.7 && <5
+    , containers
+    , hashi
+    , heredoc >=0.1.0.0
+    , template-haskell
+    , text
+    , text-show
+  default-language: Haskell2010
