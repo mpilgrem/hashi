@@ -20,11 +20,12 @@ description: Solver for Hashiwokakero puzzles written in Haskell.
 dependencies:
 - base >= 4.7 && < 5
 - array
+- colour
 - containers
-- heredoc >= 0.1.0.0
+- diagrams-lib
+- diagrams-svg
 - template-haskell
 - text
-- text-show
 
 ghc-options:
 - -Wall

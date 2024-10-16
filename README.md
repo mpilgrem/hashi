@@ -62,5 +62,7 @@ stack exec -- hashi-solve 7x10easy
 This project is a fork of [`hashi`](https://github.com/ctbo/hashi/tree/bd38e6f37635d74bd2fd3528821db04b9edf6643) by Harald Bögeholz.
 
 See `CHANGELOG.md` for a description of changes and additions to that project.
-The principal changes are indended to make it easier to identify and follow the
-algorithm.
+The principal changes are:
+
+* intended to make it easier to identify and follow the algorithm; and
+* output in SVG rather than EPS.

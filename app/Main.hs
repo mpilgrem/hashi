@@ -15,19 +15,22 @@ module Main
   ) where
 
 import qualified Data.Text.IO as T
+import           Diagrams.Backend.SVG ( renderSVG )
+import           Diagrams.TwoD ( dims2D )
 import           Hashi ( solveProblem )
 import           Hashi.Read ( readProblem )
-import           Hashi.Show ( showStateEPS )
+import           Hashi.Show ( showState )
 import           System.Environment ( getArgs )
 
 main :: IO ()
 main = getArgs >>= \case
-  [filename] -> T.readFile filename >>= work (filename <> ".solution.eps")
+  [filename] -> T.readFile filename >>= work (filename <> ".solution.svg")
   [] ->
     error
       "Usage: hashi-solve filename\nWill write solution to filename.solution.eps"
   _  -> error "Too many arguments."
  where
+  size = dims2D 842.0 595.0
   work outfile s = case readProblem s of
     Left e -> putStrLn e
     Right p -> do
@@ -35,5 +38,5 @@ main = getArgs >>= \case
       let solutions = solveProblem p
       case solutions of
         [] -> pure ()
-        (solution:_) -> T.writeFile outfile $ showStateEPS solution
+        (solution:_) -> renderSVG outfile size $ showState solution
       putStrLn $ "Total number of solutions: " <> show (length solutions)

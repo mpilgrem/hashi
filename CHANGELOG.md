@@ -18,22 +18,18 @@ and this project adheres to
 * Haddock and in-code documentation.
 * `Hashi.Read.mapText` helper function.
 * `Hashi.Types.isIsland`, to reduce code duplication.
+* `Hashi.Show`, and the use of the `diagrams` package to render to SVG.
 
 ### Changed
 * `LICENSE` renamed `LICENSE.md`.
-* `hashiheader.eps` bounding box reoriented from portrait to landscape.
 * Code in `solve.hs` moved to `app/Main.hs`.
 * Code in `Hashi.hs` distributed between `src/Hashi.hs`, `src/Hashi/Types.hs`,
-  `src/Hashi/Read.hs`, `src/Hashi/State.hs` and `src/Hashi/Show.hs`; and
-  reformatted.
-* Use of `String` replaced by `Data.Text.Text` in `Hashi.Read` and `Hashi.Show`,
-  including modification of `Hashi.Read.readProblemList`.
-* `import Heredoc` replaced by a dependency on the `heredoc` package.
+  `src/Hashi/Read.hs` and `src/Hashi/State.hs`; and reformatted.
+* Use of `String` replaced by `Data.Text.Text` in `Hashi.Read`, including
+  modification of `Hashi.Read.readProblemList`.
 * `Hashi.Types.Bridges` renamed `Hashi.Types.BridgeSet`, with consequent
   changes.
 * `Hashi.Read.readFile` modified to use `Data.Char.digitToInt`.
-* `Hashi.Show.bridges` and `Hashi.Show.circle` derived from
-  `Hashi.Show.showStateEPS`, with use of `Data.Text.unwords`.
 * `Hashi.connectedComponents` modified to avoid partial functions by using
   `NonEmpty (Set Index)`.
 * `solve` renamed `solveProblem`, `solve'` renamed `solveState` and
