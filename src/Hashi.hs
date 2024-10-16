@@ -25,23 +25,24 @@ import           Hashi.Types
                    )
 
 solveProblem :: Problem -> [State]
-solveProblem p = concatMap solveState $ narrowAll state
+solveProblem = concatMap solveState . narrowAll . stateFromProblem
  where
-  state = stateFromProblem p
+  narrowAll :: State -> [State]
+  narrowAll state = narrow (Map.keysSet state) state
 
 solveState :: State -> [State]
 solveState state =
-  case (connectedComponents state, find uncertain islands) of
+  case (connectedComponents, find uncertain islands) of
     -- Nothing uncertain and one set of connected components: solved
     (_ :| [], Nothing) -> [state]
     -- Otherwise, if nothing uncertain: no solution
     (_, Nothing) -> []
     -- Something uncertain and one set of connected components: try to solve
-    (_ :| [], Just island) -> solveForIsland state island
+    (_ :| [], Just island) -> solveForIsland island
     -- Otherwise, if something uncertain ...
     (ccs, Just island)  -> if all unfinished ccs
       -- All of the sets of connected components are unfinished: try to solve
-      then solveForIsland state island
+      then solveForIsland island
       -- One or more of the sets of connected components are finished: no
       -- solution
       else []
@@ -50,16 +51,52 @@ solveState state =
   uncertain (_, islandState) = isUncertain islandState
   unfinished = any (isUncertain . (state Map.!))
 
-solveForIsland :: State -> Island -> [State]
-solveForIsland state island@(_, islandState) =
-  concatMap tryBridgeSet $ iBridgeSets islandState
- where
-  tryBridgeSet bridgeSet =
-    [ newState
-    | newStates <- narrow locs $ setBridgeSets state island [bridgeSet]
-    , newState <- solveState newStates
-    ]
-  locs = locsFromIslandState islandState
+  connectedComponents :: NonEmpty (Set Index)
+  connectedComponents =
+    let (seed, restUnvisited) = Set.deleteFindMin (Map.keysSet state)
+    in  connComps (Set.empty :| []) (Set.singleton seed) restUnvisited
+
+  connComps ::
+       NonEmpty (Set Index)
+    -> Set Index
+    -> Set Index
+    -> NonEmpty (Set Index)
+  connComps ccs@(cc :| restCcs) locs unvisited
+    | Set.null locs = if Set.null unvisited
+        then
+          ccs
+        else
+          let (seed, restUnvisited) = Set.deleteFindMin unvisited
+          in  connComps (Set.empty <| ccs) (Set.singleton seed) restUnvisited
+    | otherwise =
+        let (loc, restLocs) = Set.deleteFindMin locs
+            restUnvisited = Set.delete loc unvisited
+            islandState = state Map.! loc
+            conn = Set.fromList $ mapMaybe
+              (($ islandState) . snd)
+              ( filter
+                  hasBridges
+                  [ (topB, topNeighbor)
+                  , (rightB, rightNeighbor)
+                  , (bottomB, bottomNeighbor)
+                  , (leftB, leftNeighbor)
+                  ]
+              )
+            hasBridges (dir, _) = 0 `notElem` map dir (iBridgeSets islandState)
+            newCcs = Set.insert loc cc :| restCcs
+            newLocs = Set.union restLocs conn Set.\\ cc
+        in  connComps newCcs newLocs restUnvisited
+
+  solveForIsland :: Island -> [State]
+  solveForIsland island@(_, islandState) =
+    concatMap tryBridgeSet $ iBridgeSets islandState
+   where
+    tryBridgeSet bridgeSet =
+      [ newState
+      | newStates <- narrow locs $ setBridgeSets state island [bridgeSet]
+      , newState <- solveState newStates
+      ]
+    locs = locsFromIslandState islandState
 
 narrow :: Set Index -> State -> [State]
 narrow locs state
@@ -88,11 +125,10 @@ narrow locs state
     Just neighborLoc -> thisB b `elem` map otherB (getBridgeSets neighborLoc)
   noXings thisB others otherB b =
        thisB b == 0
-    || all
-         (\o -> 0 `elem` map otherB (getBridgeSets o))
-         (others islandState)
+    || all ((0 `elem`) . map otherB . getBridgeSets) (others islandState)
+
   getBridgeSets :: Index -> [BridgeSet]
-  getBridgeSets l = iBridgeSets $ state Map.! l
+  getBridgeSets = iBridgeSets . (state Map.!)
 
 setBridgeSets :: State -> Island -> [BridgeSet] -> State
 setBridgeSets state (loc, islandState) bridgeSets =
@@ -105,38 +141,3 @@ locsFromIslandState islandState =
   neighbours = mapMaybe
     ($ islandState)
     [topNeighbor, rightNeighbor, bottomNeighbor, leftNeighbor]
-
-narrowAll :: State -> [State]
-narrowAll state = narrow (Map.keysSet state) state
-
-connectedComponents :: State -> NonEmpty (Set Index)
-connectedComponents state =
-  let (seed, remainingUnvisited) = Set.deleteFindMin (Map.keysSet state)
-  in  cc (Set.empty :| []) (Set.singleton seed) remainingUnvisited
- where
-  cc :: NonEmpty (Set Index) -> Set Index -> Set Index -> NonEmpty (Set Index)
-  cc ccs@(cs :| rest) locs unvisited
-    | Set.null locs = if Set.null unvisited
-        then
-          ccs
-        else
-          let (seed, remainingUnvisited) = Set.deleteFindMin unvisited
-          in  cc (Set.empty <| ccs) (Set.singleton seed) remainingUnvisited
-    | otherwise =
-        let (seed, remainingLocs) = Set.deleteFindMin locs
-            remainingUnvisited = Set.delete seed unvisited
-            islandState = state Map.! seed
-            conn = Set.fromList $ mapMaybe
-              (($ islandState) . snd)
-              ( filter
-                  f
-                  [ (topB, topNeighbor)
-                  , (rightB, rightNeighbor)
-                  , (bottomB, bottomNeighbor)
-                  , (leftB, leftNeighbor)
-                  ]
-              )
-            f (fB, _) = 0 `notElem` map fB (iBridgeSets islandState)
-            newCs = Set.insert seed cs :| rest
-            newLocs = Set.union remainingLocs conn Set.\\ cs
-        in  cc newCs newLocs remainingUnvisited

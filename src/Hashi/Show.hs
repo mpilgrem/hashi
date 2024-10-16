@@ -15,6 +15,7 @@ module Hashi.Show
   ) where
 
 import qualified Data.Map as Map
+import           Data.Maybe ( fromMaybe )
 import           Diagrams.Backend.SVG ( B )
 import           Diagrams.Prelude
                    ( Diagram, (#), black, circle, fc, font, fontSizeL, frame
@@ -42,17 +43,15 @@ bridges ((r, c), islandState) = right <> down
  where
   right = bridge rightB rightNeighbor
   down = bridge bottomB bottomNeighbor
-  bridge fB fN = case iBridgeSets islandState of
-    [bridgeSet] -> case fB bridgeSet of
+  bridge dir neighbor = case iBridgeSets islandState of
+    [bridgeSet] -> case dir bridgeSet of
       1 -> line c r c' r' # lwO 2 # lc black
       2 ->    line c r c' r' # lwO 2 # lc white
            <> line c r c' r' # lwO 6 # lc black
       _ -> mempty
     _ -> error "Not a solution"
    where
-    (r', c') = case fN islandState of
-      Just p -> p
-      Nothing -> error "No neighbour"
+    (r', c') = fromMaybe (error "No neighbour") (neighbor islandState)
 
 line :: Int -> Int -> Int -> Int -> Diagram B
 line x1 y1 x2 y2 = fromVertices [p2 (x1', y1'), p2 (x2', y2')]
