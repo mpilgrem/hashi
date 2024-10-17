@@ -14,6 +14,7 @@ module Hashi.Types
   , isIsland
   , Problem
   , BridgeSet (..)
+  , GetBridge
   , IslandState (..)
   , isUncertain
   , State
@@ -50,6 +51,10 @@ data BridgeSet = BridgeSet
   , bottomB :: Int
   , leftB :: Int
   } deriving (Eq, Show)
+
+-- | Type synonyn representing functions obtaining a brige from the brides of an
+-- Island.
+type GetBridge = BridgeSet -> Int
 
 -- | Type representing states of an island.
 data IslandState = IslandState

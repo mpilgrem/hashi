@@ -20,8 +20,8 @@ import qualified Data.Set as Set
 import           Data.Set ( Set )
 import           Hashi.State ( stateFromProblem )
 import           Hashi.Types
-                   ( BridgeSet (..), Index, Island, IslandState (..), Problem
-                   , State, isUncertain
+                   ( BridgeSet (..), GetBridge, Index, Island, IslandState (..)
+                   , Problem, State, isUncertain
                    )
 
 solveProblem :: Problem -> [State]
@@ -100,32 +100,50 @@ solveState state =
 
 narrow :: Set Index -> State -> [State]
 narrow locs state
+    -- No locations to test: return the state
   | Set.null locs = [state]
-  | null validBridgeSets = []
-  | bridgeSets == validBridgeSets = narrow remainingLocs state
+    -- The first location has no valid bridge sets: no valid state
+  | null validIslandBridgeSets = []
+    -- The bridge sets of the first location are all valid: test the next
+    -- location
+  | islandBridgeSets == validIslandBridgeSets = narrow remainingLocs state
+    -- Otherwise, replace the bridge sets of the first location with valid ones
+    -- and add locations potentially affected by the change to the locations to
+    -- be tested, and test that
   | otherwise =
       let newLocs = locsFromIslandState islandState
       in  narrow
             (Set.union remainingLocs newLocs)
-            (setBridgeSets state island validBridgeSets)
+            (setBridgeSets state island validIslandBridgeSets)
  where
   (loc, remainingLocs) = Set.deleteFindMin locs
   islandState = state Map.! loc
   island = (loc, islandState)
-  bridgeSets = iBridgeSets islandState
-  validBridgeSets =
+  islandBridgeSets = iBridgeSets islandState
+  validIslandBridgeSets =
       filter (noXings rightB rightXings bottomB)
     $ filter (noXings bottomB bottomXings rightB)
     $ filter (match topB topNeighbor bottomB)
     $ filter (match rightB rightNeighbor leftB)
     $ filter (match bottomB bottomNeighbor topB)
-    $ filter (match leftB leftNeighbor rightB) bridgeSets
-  match thisB neighbor otherB b = case neighbor islandState of
-    Nothing -> True
-    Just neighborLoc -> thisB b `elem` map otherB (getBridgeSets neighborLoc)
+    $ filter (match leftB leftNeighbor rightB) islandBridgeSets
+
+  match :: GetBridge -> (IslandState -> Maybe Index) -> GetBridge -> BridgeSet -> Bool
+  match thisB mNeighbour otherB bridgeSet = maybe
+    True
+    (hasBridge (thisB bridgeSet) otherB . getBridgeSets)
+    (mNeighbour islandState)
+
+  noXings :: GetBridge -> (IslandState -> [Index]) -> GetBridge -> BridgeSet -> Bool
   noXings thisB others otherB b =
        thisB b == 0
-    || all ((0 `elem`) . map otherB . getBridgeSets) (others islandState)
+    || all (hasNoBridge otherB . getBridgeSets) (others islandState)
+
+  hasBridge :: Int -> GetBridge -> [BridgeSet] -> Bool
+  hasBridge n dirB = (n `elem`) . map dirB
+
+  hasNoBridge :: GetBridge -> [BridgeSet] -> Bool
+  hasNoBridge = hasBridge 0
 
   getBridgeSets :: Index -> [BridgeSet]
   getBridgeSets = iBridgeSets . (state Map.!)
