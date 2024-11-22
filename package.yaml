@@ -4,7 +4,7 @@ verbatim:
   cabal-version: 3.6
 
 name:                hashi
-version:             1.0
+version:             2.0
 github:              "mpilgrem/hashi"
 author:              "Mike Pilgrem"
 maintainer:          "public@pilgrem.com"

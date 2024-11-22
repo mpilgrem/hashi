@@ -15,37 +15,13 @@ import           Diagrams.Prelude
                    ( Diagram, V2 (..), (#), circle, fc, fontSizeL, imap, lw
                    , none, rect, text, translate, wheat
                    )
-import           Grid ( Cell, Grid, heightGrid, widthGrid )
 
-radius :: Int
-radius = 20
-
-radius' :: Double
-radius' = fromIntegral radius
-
-margin :: Int
-margin = radius `div` 4
-
-margin' :: Double
-margin' = fromIntegral margin
-
-cellDim :: Int
-cellDim = 2 * (radius + margin)
-
-cellDim' :: Double
-cellDim' = fromIntegral cellDim
-
-backgroundWidth :: Int
-backgroundWidth = widthGrid * cellDim + 2 * margin
-
-backgroundWidth' :: Double
-backgroundWidth' = fromIntegral backgroundWidth
-
-backgroundHeight :: Int
-backgroundHeight = heightGrid * cellDim + 2 * margin
-
-backgroundHeight' :: Double
-backgroundHeight' = fromIntegral backgroundHeight
+import           Constants
+                   ( backgroundHeight, backgroundHeight',  backgroundWidth
+                   , backgroundWidth', cellDim', heightGrid, margin', radius'
+                   , widthGrid
+                   )
+import           Grid ( Cell, Grid )
 
 drawCell :: Cell -> Diagram B
 drawCell Nothing = mempty

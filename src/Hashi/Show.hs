@@ -16,27 +16,41 @@ module Hashi.Show
 
 import qualified Data.Map as Map
 import           Data.Maybe ( fromMaybe )
-import           Diagrams.Backend.SVG ( B )
+import           Diagrams.Backend.Rasterific ( B )
 import           Diagrams.Prelude
-                   ( Diagram, (#), black, circle, fc, font, fontSizeL, frame
-                   , fromVertices, lc, lwO, p2, sRGB, text, translateX
-                   , translateY, white
+                   ( Diagram, V2 (..), (#), black, circle, fc, fontSizeL
+                   , fromVertices, lc, lw, lwO, none, p2, rect, text
+                   , translate, wheat, white
                    )
 import           Hashi.Types ( BridgeSet (..), Island, IslandState (..), State )
 
+import           Constants
+                   ( backgroundHeight', backgroundWidth', cellDim', margin'
+                   , radius'
+                   )
+
 showState :: State -> Diagram B
-showState state = frame 1 $ mconcat (map island islands <> map bridges islands)
+showState state =
+  mconcat (map island islands <> map bridges islands) <> backdrop
  where
   islands = Map.assocs state
 
-island :: Island -> Diagram B
-island ((r, c), islandState) =
-  (  text (show $ iConstraint islandState) # fontSizeL 0.8 # font "Arial"
-  <> circle 0.45 # fc (sRGB 0.8 0.9 1.0)
-  ) # translateX c' # translateY r' # lwO 0.5
+backdrop :: Diagram B
+backdrop = translate (V2 x y) (rect w h # fc wheat # lw none)
  where
-  c' = fromIntegral c
-  r' = fromIntegral r
+  w = backgroundWidth'
+  h = backgroundHeight'
+  x = w / 2.0 - margin'
+  y = h / 2.0 - margin'
+
+island :: Island -> Diagram B
+island ((row, col), islandState) =
+  (  text (show $ iConstraint islandState) # fontSizeL radius'
+  <> circle radius' # fc wheat
+  ) # translate (V2 x y)
+ where
+  x = fromIntegral col * cellDim' + cellDim' / 2.0
+  y = fromIntegral row * cellDim' + cellDim' / 2.0
 
 bridges :: Island -> Diagram B
 bridges ((r, c), islandState) = right <> down
@@ -56,7 +70,7 @@ bridges ((r, c), islandState) = right <> down
 line :: Int -> Int -> Int -> Int -> Diagram B
 line x1 y1 x2 y2 = fromVertices [p2 (x1', y1'), p2 (x2', y2')]
  where
-  x1' = fromIntegral x1
-  y1' = fromIntegral y1
-  x2' = fromIntegral x2
-  y2' = fromIntegral y2
+  x1' = fromIntegral x1 * cellDim' + cellDim'/2.0
+  y1' = fromIntegral y1 * cellDim' + cellDim'/2.0
+  x2' = fromIntegral x2 * cellDim' + cellDim'/2.0
+  y2' = fromIntegral y2 * cellDim' + cellDim'/2.0

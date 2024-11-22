@@ -15,15 +15,11 @@ import qualified Data.Vector as V
 import           Data.Vector ( Vector, (!) )
 import qualified Data.Vector.Mutable as MV
 
+import           Constants ( heightGrid, widthGrid )
+
 type Cell = Maybe Int
 
 type Grid = Vector (Vector Cell)
-
-widthGrid :: Int
-widthGrid = 10
-
-heightGrid :: Int
-heightGrid = 6
 
 emptyGrid :: Grid
 emptyGrid = V.replicate heightGrid (V.replicate widthGrid Nothing)

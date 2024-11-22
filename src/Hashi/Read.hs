@@ -16,7 +16,8 @@ import           Data.Array.IArray ( listArray )
 import qualified Data.Vector as V
 import           Hashi.Types ( Field (..), Problem )
 
-import           Grid ( Cell, Grid, heightGrid, widthGrid )
+import           Constants ( heightGrid, widthGrid )
+import           Grid ( Cell, Grid )
 
 gridToProblem :: Grid -> Problem
 gridToProblem grid =

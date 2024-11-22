@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE ImplicitParams            #-}
+{-# LANGUAGE LambdaCase                #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE OverloadedLabels          #-}
 {-# LANGUAGE OverloadedRecordDot       #-}
@@ -22,7 +23,7 @@ module Main
 
 import           Codec.Picture.Types ( Image (..), PixelRGBA8 )
 import           Control.Monad ( void )
-import           Data.GI.Base ( AttrOp (..), get, new, set )
+import           Data.GI.Base ( AttrOp (..), new, set )
 import           Data.GI.Base.Utils ( whenJust )
 import           Data.IORef ( IORef, newIORef, readIORef, writeIORef )
 import qualified Data.Vector.Storable as SV
@@ -45,6 +46,7 @@ import           Draw
 import           Hashi ( solveProblem )
 import           Hashi.Read ( gridToProblem )
 import           Hashi.Show ( showState )
+import           Hashi.Types ( State )
 
 renderDiagramToPixbuf :: Int -> Int -> Diagram B -> IO Pixbuf
 renderDiagramToPixbuf width height diagram =
@@ -75,7 +77,7 @@ renderDiagramToImage width height =
       options = RasterificOptions size
   in  renderDia Rasterific options
 
-activate :: Gtk.Application -> IORef Grid -> IO ()
+activate :: Gtk.Application -> IORef AppState -> IO ()
 activate app appState = do
 
   grid <- new Gtk.Grid
@@ -87,51 +89,71 @@ activate app appState = do
     , #marginTop := 5
     ]
 
+  picture <- Gtk.pictureNew
+
   let onButtonClick :: Gtk.Button -> IO ()
       onButtonClick button = do
         button `set` [ #sensitive := False
                      , #label := "Solved"
                      ]
+        appSolutions <$> readIORef appState >>= \case
+          [s] -> do
+            texture <- textureNewForPixbuf =<< renderDiagramToPixbuf
+              backgroundWidth
+              backgroundHeight
+              (showState s)
+            picture `set`
+              [ #paintable := texture
+              , #sensitive := False
+              ]
+          _ -> pure ()
 
   button <- new Gtk.Button
     [ #label := "No solution"
+    , #sensitive := False
     , On #clicked (onButtonClick ?self)
     ]
 
-  let onMouseClick :: Gtk.GestureClick -> Gtk.GestureClickPressedCallback
-      onMouseClick gestureClick _nPress x y = do
+  let onMouseClick :: Gtk.GestureClickPressedCallback
+      onMouseClick _nPress x y = do
         whenJust (coordsToIsland x y) $ \(row, col) -> do
-          mWidget <- get gestureClick #widget
-          whenJust mWidget $ \widget -> do
-            mPicture <- Gtk.castTo Gtk.Picture widget
-            whenJust mPicture $ \picture -> do
-              oldGrid <- readIORef appState
-              let gameGrid = updateGrid col row oldGrid
-              writeIORef appState gameGrid
-              texture <- textureNewForPixbuf =<< renderDiagramToPixbuf
-                backgroundWidth
-                backgroundHeight
-                (drawGrid gameGrid)
-              picture `set` [ #paintable := texture ]
-              let solutions = solveProblem $ gridToProblem gameGrid
-              case solutions of
-                [] -> button `set` [ #label := "No solution" ]
-                [_] -> button `set` [ #label := "Solve" ]
-                _ -> button `set` [ #label := "No unique solution" ]
+          oldGrid <- appGrid <$> readIORef appState
+          let gameGrid = updateGrid col row oldGrid
+              solutions = solveProblem $ gridToProblem gameGrid
+          writeIORef appState $ AppState gameGrid solutions
+          texture <- textureNewForPixbuf =<< renderDiagramToPixbuf
+            backgroundWidth
+            backgroundHeight
+            (drawGrid gameGrid)
+          picture `set` [ #paintable := texture ]
+          case solutions of
+            [] -> button `set`
+              [ #label := "No solution"
+              , #sensitive := False
+              ]
+            [_] -> button `set`
+              [ #label := "Solve"
+              , #sensitive := True
+              ]
+            _ -> button `set`
+              [ #label := "No unique solution"
+              , #sensitive := False
+              ]
 
   gestureClick <- new Gtk.GestureClick
-    [ On #pressed (onMouseClick ?self) ]
+    [ On #pressed onMouseClick ]
 
-  gameGrid <- readIORef appState
+  AppState gameGrid _ <- readIORef appState
 
   texture <- textureNewForPixbuf =<< renderDiagramToPixbuf
     backgroundWidth
     backgroundHeight
     (drawGrid gameGrid)
 
-  picture <- Gtk.pictureNewForPaintable (Just texture)
-
-  picture `set` [ #canShrink := False ]
+  picture `set`
+    [ #paintable := texture
+    , #canShrink := False
+    ]
 
   #addController picture gestureClick
 
@@ -144,17 +166,22 @@ activate app appState = do
 
   window <- new Gtk.ApplicationWindow
     [ #application := app
-    , #title := "Create Hashi grid"
+    , #title := "Create Hashi problem"
     , #titlebar := headerBar
     , #child := grid
     ]
   window.show
 
+data AppState = AppState
+  { appGrid :: Grid
+  , appSolutions :: [State]
+  }
+
 main :: IO ()
 main = do
-  appState <- newIORef emptyGrid
+  appState <- newIORef $ AppState emptyGrid []
   app <- new Gtk.Application
-    [ #applicationId := "com.pilgrem.gtk-dynamic-picture"
+    [ #applicationId := "com.pilgrem.hashi"
     , On #activate (activate ?self appState)
     ]
   void $ app.run Nothing
@@ -164,18 +191,3 @@ iconFile = getDataFileName "haskell-logo24x24.png"
 
 iconImage :: IO Gtk.Image
 iconImage = iconFile >>= Gtk.imageNewFromFile
-
-{-
-
-
-module Main
-  ( main
-  ) where
-
-import qualified Data.Text.IO as T
-import           Diagrams.Backend.SVG ( renderSVG )
-import           Diagrams.TwoD ( dims2D )
-
-main :: IO ()
-        (solution:_) -> renderSVG outfile size $ showState solution
--}

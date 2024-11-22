@@ -1,6 +1,6 @@
 # hashi
 
-A solver of Hashiwokakero (橋をかけろ - _Build Bridges!_) logic puzzles.
+A maker and solver of Hashiwokakero (橋をかけろ - _Build Bridges!_) logic puzzles.
 
 A puzzle comprises a rectangular grid. Some cells of the grid are 'islands' and
 other cells are 'water'. Each island has a constraint of the number of bridges,
@@ -34,29 +34,12 @@ constraints.
 └─┴─┴─┘
 ~~~
 
-Puzzles are specified in text files using characters `.` (water) and `1` to `8` (island with constraint). For example `7x10easy` contains:
-
-~~~text
-2.2..2.
-......1
-6.5.3..
-.1....3
-3.1..1.
-.3..8.5
-4.2....
-.2..5.2
-2..1...
-..2.5.3
-~~~
+Puzzles are specified by clicking in the sea. Click repeatedly to increase the
+constraint.
 
 To build with Stack, command:
 ~~~text
 stack build
-~~~
-
-To use the executable with Stack with `7x10easy` (for example), command:
-~~~text
-stack exec -- hashi-solve 7x10easy
 ~~~
 
 This project is a fork of [`hashi`](https://github.com/ctbo/hashi/tree/bd38e6f37635d74bd2fd3528821db04b9edf6643) by Harald Bögeholz.
