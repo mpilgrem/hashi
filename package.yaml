@@ -17,15 +17,28 @@ extra-source-files:
 
 description: Solver for Hashiwokakero puzzles written in Haskell.
 
+data-dir: resources
+
+data-files:
+- haskell-logo24x24.png
+
 dependencies:
 - base >= 4.7 && < 5
+- JuicyPixels
 - array
 - colour
 - containers
 - diagrams-lib
+- diagrams-lib
+- diagrams-rasterific
 - diagrams-svg
+- gi-gdk
+- gi-gdkpixbuf
+- gi-gtk >= 4.0
+- haskell-gi-base
 - template-haskell
 - text
+- vector
 
 ghc-options:
 - -Wall
@@ -45,9 +58,12 @@ executables:
   hashi-solve:
     main:                Main.hs
     source-dirs:         app
+    generated-other-modules: Paths_hashi
     ghc-options:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
+    - -optl-mwindows
+    - -optl=resources/haskell-logo.res
     dependencies:
     - hashi

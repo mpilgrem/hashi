@@ -17,6 +17,9 @@ build-type:     Simple
 extra-source-files:
     LICENSE.md
     README.md
+data-files:
+    haskell-logo24x24.png
+data-dir:       resources
 
 source-repository head
   type: git
@@ -24,6 +27,8 @@ source-repository head
 
 library
   exposed-modules:
+      Draw
+      Grid
       Hashi
       Hashi.Read
       Hashi.Show
@@ -33,29 +38,47 @@ library
       src
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
-      array
+      JuicyPixels
+    , array
     , base >=4.7 && <5
     , colour
     , containers
     , diagrams-lib
+    , diagrams-rasterific
     , diagrams-svg
+    , gi-gdk
+    , gi-gdkpixbuf
+    , gi-gtk >=4.0
+    , haskell-gi-base
     , template-haskell
     , text
+    , vector
   default-language: Haskell2010
 
 executable hashi-solve
   main-is: Main.hs
+  other-modules:
+      Paths_hashi
+  autogen-modules:
+      Paths_hashi
   hs-source-dirs:
       app
-  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N -optl-mwindows -optl=resources/haskell-logo.res
   build-depends:
-      array
+      JuicyPixels
+    , array
     , base >=4.7 && <5
     , colour
     , containers
     , diagrams-lib
+    , diagrams-rasterific
     , diagrams-svg
+    , gi-gdk
+    , gi-gdkpixbuf
+    , gi-gtk >=4.0
     , hashi
+    , haskell-gi-base
     , template-haskell
     , text
+    , vector
   default-language: Haskell2010
