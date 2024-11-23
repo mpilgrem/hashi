@@ -3,66 +3,54 @@
 {-# LANGUAGE TypeFamilies              #-}
 
 module Grid
-  ( Grid
-  , Cell
-  , widthGrid
-  , heightGrid
-  , emptyGrid
+  ( emptyGrid
   , updateGrid
   ) where
 
-import qualified Data.Vector as V
-import           Data.Vector ( Vector, (!) )
-import qualified Data.Vector.Mutable as MV
+import qualified Data.Map as Map
+import           Data.Maybe ( fromMaybe )
 
 import           Constants ( heightGrid, widthGrid )
+import           Hashi.Types ( Field (..), Problem )
 
-type Cell = Maybe Int
+emptyGrid :: Problem
+emptyGrid = Map.empty
 
-type Grid = Vector (Vector Cell)
+getCell :: Problem -> Int -> Int -> Field
+getCell grid col row =
+  fromMaybe Water $ Map.lookup (col, row) grid
 
-emptyGrid :: Grid
-emptyGrid = V.replicate heightGrid (V.replicate widthGrid Nothing)
+setCell :: Int -> Int -> Field -> Problem -> Problem
+setCell col row field = case field of
+  Water -> Map.delete (col, row)
+  island -> Map.insert (col, row) island
 
-getCell :: Grid -> Int -> Int -> Cell
-getCell grid col row = grid ! row ! col
-
-setCell :: Int -> Int -> Cell -> Grid -> Grid
-setCell col row cell = V.modify
-  (\v -> do
-    rowV <- MV.read v row
-    MV.write v row (setRow col cell rowV)
-  )
-
-clearCells :: Int -> Int -> Grid -> Grid
+clearCells :: Int -> Int -> Problem -> Problem
 clearCells col row = clearUp . clearDown . clearLeft . clearRight
  where
   clearUp = if row + 1 >= heightGrid
     then id
-    else setCell col (row + 1) Nothing
+    else setCell col (row + 1) Water
   clearDown = if row <= 0
     then id
-    else setCell col (row - 1) Nothing
+    else setCell col (row - 1) Water
   clearRight = if col + 1 >= widthGrid
     then id
-    else setCell (col + 1) row Nothing
+    else setCell (col + 1) row Water
   clearLeft = if col <= 0
     then id
-    else setCell (col - 1) row Nothing
+    else setCell (col - 1) row Water
 
-setRow :: Int -> Cell -> Vector Cell -> Vector Cell
-setRow col cell = V.modify (\v -> MV.write v col cell)
+cycleCell :: Field -> Field
+cycleCell Water = Island 1
+cycleCell (Island 8) = Water
+cycleCell (Island n) = Island (n + 1)
 
-cycleCell :: Cell -> Cell
-cycleCell Nothing = Just 1
-cycleCell (Just 8) = Nothing
-cycleCell (Just n) = Just (n + 1)
-
-updateGrid :: Int -> Int -> Grid -> Grid
+updateGrid :: Int -> Int -> Problem -> Problem
 updateGrid col row oldGrid =
   let oldCell = getCell oldGrid col row
       newCell = cycleCell oldCell
       gameGrid = setCell col row newCell oldGrid
   in  case newCell of
-        Nothing -> gameGrid
-        Just _ -> clearCells col row gameGrid
+        Water -> gameGrid
+        Island _ -> clearCells col row gameGrid

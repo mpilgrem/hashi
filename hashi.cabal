@@ -28,16 +28,14 @@ source-repository head
 library
   exposed-modules:
       Constants
-      Draw
       Grid
       Hashi
-      Hashi.Read
       Hashi.Show
       Hashi.State
       Hashi.Types
   hs-source-dirs:
       src
-  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -Wunused-packages
   build-depends:
       JuicyPixels
     , array
@@ -64,7 +62,7 @@ executable hashi-solve
       Paths_hashi
   hs-source-dirs:
       app
-  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N -optl-mwindows -optl=resources/haskell-logo.res
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -Wunused-packages -threaded -rtsopts -with-rtsopts=-N -optl-mwindows -optl=resources/haskell-logo.res
   build-depends:
       JuicyPixels
     , array

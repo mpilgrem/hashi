@@ -12,28 +12,25 @@ module Hashi.State
   ( stateFromProblem
   ) where
 
-import           Data.Array.IArray ( (!), assocs, bounds )
 import           Data.List ( find )
 import qualified Data.Map as Map
-import           Data.Maybe ( isJust, mapMaybe )
+import           Data.Maybe ( isJust )
 import           Hashi.Types
                    ( BridgeSet (..), Field (..), Index, Island, IslandState (..)
-                   , Problem, State, isIsland
+                   , Problem, State
                    )
+import           Constants ( widthGrid, heightGrid )
 
 -- | Yields an initial state from a problem. Assumes that the top left location
 -- in the grid is @(0, 0)@.
 stateFromProblem :: Problem -> State
 stateFromProblem p = state
  where
-  (rn, cn) = case bounds p of
-    ((0, 0), corner) -> corner
-    (_, _) -> error "Lower bound not (0, 0)"
-  state = Map.fromList $ mapMaybe toIsland $ assocs p
+  state = Map.mapMaybeWithKey toIslandState p
   islands = Map.assocs state
 
-  toIsland :: (Index, Field) -> Maybe Island
-  toIsland (i, Island n) = Just (i, islandState)
+  toIslandState :: Index -> Field -> Maybe IslandState
+  toIslandState i (Island n) = Just islandState
    where
     islandState =
       IslandState n (top i) (right i) (bottom i) (left i) rx bx bridgeSets
@@ -45,20 +42,20 @@ stateFromProblem p = state
       && (isJust (leftNeighbor islandState) || l == 0)
     rx = map fst $ filter (xing (i, islandState)) islands
     bx = map fst $ filter (`xing` (i, islandState)) islands
-  toIsland (_, Water) = Nothing
+  toIslandState _ Water = Nothing
 
-  top (r, c) = find isIslandIndex [(rr, c) | rr <- [r - 1, r - 2 .. 0]]
-  right (r, c) = find isIslandIndex [(r, cc) | cc <- [c + 1 .. cn]]
-  bottom (r, c) = find isIslandIndex [(rr, c) | rr <- [r + 1 .. rn]]
-  left (r, c) = find isIslandIndex [(r, cc) | cc <- [c - 1, c - 2 .. 0]]
-  isIslandIndex i = isIsland (p!i)
+  top (c, r) = find isIslandIndex [(c, rr) | rr <- [r - 1, r - 2 .. 0]]
+  right (c, r) = find isIslandIndex [(cc, r) | cc <- [c + 1 .. widthGrid - 1]]
+  bottom (c, r) = find isIslandIndex [(c, rr) | rr <- [r + 1 .. heightGrid - 1]]
+  left (c, r) = find isIslandIndex [(cc, r) | cc <- [c - 1, c - 2 .. 0]]
+  isIslandIndex i = isJust (Map.lookup i p)
 
 -- | Would a bridge to the righthand neighbour of the first island (if any)
 -- cross a bridge to the bottom neighbour of the second island (if any)?
 xing :: Island -> Island -> Bool
-xing ((r1, c1), s1) ((r2, c2), s2) =
+xing ((c1, r1), s1) ((c2, r2), s2) =
   case (rightNeighbor s1, bottomNeighbor s2) of
-    (Just (_, c1'), Just(r2', _)) -> r2 < r1 && r1 < r2' && c1 < c2 && c2 < c1'
+    (Just (c1', _), Just(_, r2')) -> r2 < r1 && r1 < r2' && c1 < c2 && c2 < c1'
     _                        -> False
 
 -- | A list of all possible bridge sets consistent with the given constraint.

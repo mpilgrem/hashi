@@ -21,7 +21,6 @@ module Hashi.Types
   , Island
   ) where
 
-import           Data.Array.IArray ( Array )
 import qualified Data.Map as Map
 
 -- | Type synonym representing locations on the grid.
@@ -42,7 +41,7 @@ isIsland (Island _) = True
 isIsland _          = False
 
 -- | Type synonym representing puzzles.
-type Problem = Array Index Field
+type Problem = Map.Map Index Field
 
 -- | Type representing the bridges of an island.
 data BridgeSet = BridgeSet

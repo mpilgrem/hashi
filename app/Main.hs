@@ -37,16 +37,11 @@ import           GI.GdkPixbuf ( Colorspace (..), Pixbuf, pixbufNewFromData )
 import qualified GI.Gtk as Gtk
 import           Paths_hashi ( getDataFileName )
 
-import           Grid ( Grid, emptyGrid, updateGrid )
-import           Draw
-                   ( backgroundWidth, backgroundHeight, coordsToIsland
-                   , drawGrid
-                   )
-
+import           Constants ( backgroundHeight, backgroundWidth )
+import           Grid ( emptyGrid, updateGrid )
 import           Hashi ( solveProblem )
-import           Hashi.Read ( gridToProblem )
-import           Hashi.Show ( showState )
-import           Hashi.Types ( State )
+import           Hashi.Show ( Draw (..), coordsToIsland )
+import           Hashi.Types ( Problem, State )
 
 renderDiagramToPixbuf :: Int -> Int -> Diagram B -> IO Pixbuf
 renderDiagramToPixbuf width height diagram =
@@ -97,11 +92,11 @@ activate app appState = do
                      , #label := "Solved"
                      ]
         appSolutions <$> readIORef appState >>= \case
-          [s] -> do
+          [state] -> do
             texture <- textureNewForPixbuf =<< renderDiagramToPixbuf
               backgroundWidth
               backgroundHeight
-              (showState s)
+              (draw state)
             picture `set`
               [ #paintable := texture
               , #sensitive := False
@@ -119,12 +114,12 @@ activate app appState = do
         whenJust (coordsToIsland x y) $ \(row, col) -> do
           oldGrid <- appGrid <$> readIORef appState
           let gameGrid = updateGrid col row oldGrid
-              solutions = solveProblem $ gridToProblem gameGrid
+              solutions = solveProblem gameGrid
           writeIORef appState $ AppState gameGrid solutions
           texture <- textureNewForPixbuf =<< renderDiagramToPixbuf
             backgroundWidth
             backgroundHeight
-            (drawGrid gameGrid)
+            (draw gameGrid)
           picture `set` [ #paintable := texture ]
           case solutions of
             [] -> button `set`
@@ -148,7 +143,7 @@ activate app appState = do
   texture <- textureNewForPixbuf =<< renderDiagramToPixbuf
     backgroundWidth
     backgroundHeight
-    (drawGrid gameGrid)
+    (draw gameGrid)
 
   picture `set`
     [ #paintable := texture
@@ -173,7 +168,7 @@ activate app appState = do
   window.show
 
 data AppState = AppState
-  { appGrid :: Grid
+  { appGrid :: Problem
   , appSolutions :: [State]
   }
 
