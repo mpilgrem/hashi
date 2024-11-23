@@ -14,25 +14,27 @@ Portability : Portable
 
 module Hashi.Show
   ( Draw (..)
+  , drawBackdrop
   , coordsToIsland
+  , widthBackground
+  , widthBackground'
+  , heightBackground
+  , heightBackground'
   ) where
 
 import qualified Data.Map as Map
 import           Data.Maybe ( fromMaybe )
 import           Diagrams.Backend.Rasterific ( B )
 import           Diagrams.Prelude
-                   ( AlphaColour, Diagram, V2 (..), (#), black, circle, fc, fcA, fontSizeL
-                   , fromVertices, lc, lw, lwO, none, opaque, p2, rect, text
-                   , translate, transparent, wheat, white
+                   ( AlphaColour, Diagram, V2 (..), (#), black, circle, fc, fcA
+                   , fontSizeL, fromVertices, lc, lw, lwO, none, opaque, p2
+                   , rect, text, translate, transparent, wheat, white
                    )
 import           Hashi.Types
                    ( BridgeSet (..), Field (..), Index, Island, IslandState (..)
-                   , Problem, State
+                   , Problem (..), State
                    )
-import           Constants
-                   ( backgroundHeight', backgroundWidth', cellDim', heightGrid
-                   , margin', radius', widthGrid
-                   )
+import           Constants ( cellDim, cellDim', margin, margin', radius' )
 
 class Draw a where
 
@@ -40,7 +42,9 @@ class Draw a where
 
 instance Draw Problem where
 
-  draw = drawMap draw Nothing
+  draw problem = drawMap draw Nothing grid
+   where
+    grid = pGrid problem
 
 instance Draw (Index, Field) where
 
@@ -65,7 +69,6 @@ drawMap drawItem mDrawBridges m =
        (  map drawItem items
        <> maybe [] (\f -> map f items) mDrawBridges
        )
-  <> backdrop
  where
   items = Map.assocs m
 
@@ -101,21 +104,34 @@ line x1 y1 x2 y2 = fromVertices [p2 (x1', y1'), p2 (x2', y2')]
   x2' = fromIntegral x2 * cellDim' + cellDim'/2.0
   y2' = fromIntegral y2 * cellDim' + cellDim'/2.0
 
-backdrop :: Diagram B
-backdrop = translate (V2 x y) (rect w h # fc wheat # lw none)
+drawBackdrop :: Int -> Int -> Diagram B
+drawBackdrop widthGrid heightGrid =
+  translate (V2 x y) (rect w h # fc wheat # lw none)
  where
-  w = backgroundWidth'
-  h = backgroundHeight'
+  w = widthBackground' widthGrid
+  h = heightBackground' heightGrid
   x = w / 2.0 - margin'
   y = h / 2.0 - margin'
 
-coordsToIsland :: Double -> Double -> Maybe (Int, Int)
-coordsToIsland x y =
+coordsToIsland :: Int -> Int -> Double -> Double -> Maybe (Int, Int)
+coordsToIsland widthGrid heightGrid x y =
   if col < 0 || row < 0 || col >= widthGrid || row >= heightGrid
     then Nothing
     else Just (row, col)
  where
   x' = (x - margin') / cellDim'
-  y' = (backgroundHeight' - y - margin') / cellDim'
+  y' = (heightBackground' heightGrid - y - margin') / cellDim'
   col = floor x'
   row = floor y'
+
+widthBackground :: Int -> Int
+widthBackground widthGrid = widthGrid * cellDim + 2 * margin
+
+widthBackground' :: Int -> Double
+widthBackground' = fromIntegral . widthBackground
+
+heightBackground :: Int -> Int
+heightBackground heightGrid = heightGrid * cellDim + 2 * margin
+
+heightBackground' :: Int -> Double
+heightBackground' = fromIntegral . heightBackground

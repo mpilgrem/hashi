@@ -10,24 +10,31 @@ module Grid
 import qualified Data.Map as Map
 import           Data.Maybe ( fromMaybe )
 
-import           Constants ( heightGrid, widthGrid )
-import           Hashi.Types ( Field (..), Problem )
+import           Constants ( heightGridDefault, widthGridDefault )
+import           Hashi.Types ( Field (..), Problem (..) )
 
 emptyGrid :: Problem
-emptyGrid = Map.empty
+emptyGrid = Problem widthGridDefault heightGridDefault Map.empty
 
 getCell :: Problem -> Int -> Int -> Field
-getCell grid col row =
-  fromMaybe Water $ Map.lookup (col, row) grid
+getCell problem col row =
+  fromMaybe Water $ Map.lookup (col, row) (pGrid problem)
 
 setCell :: Int -> Int -> Field -> Problem -> Problem
-setCell col row field = case field of
-  Water -> Map.delete (col, row)
-  island -> Map.insert (col, row) island
+setCell col row field problem = problem
+  { pGrid = case field of
+              Water -> Map.delete (col, row) grid
+              island -> Map.insert (col, row) island grid
+  }
+ where
+  grid = pGrid problem
 
 clearCells :: Int -> Int -> Problem -> Problem
-clearCells col row = clearUp . clearDown . clearLeft . clearRight
+clearCells col row problem =
+  clearUp $ clearDown $ clearLeft $ clearRight problem
  where
+  widthGrid = pWidthGrid problem
+  heightGrid = pHeightGrid problem
   clearUp = if row + 1 >= heightGrid
     then id
     else setCell col (row + 1) Water
@@ -47,10 +54,10 @@ cycleCell (Island 8) = Water
 cycleCell (Island n) = Island (n + 1)
 
 updateGrid :: Int -> Int -> Problem -> Problem
-updateGrid col row oldGrid =
-  let oldCell = getCell oldGrid col row
+updateGrid col row oldProblem =
+  let oldCell = getCell oldProblem col row
       newCell = cycleCell oldCell
-      gameGrid = setCell col row newCell oldGrid
+      problem = setCell col row newCell oldProblem
   in  case newCell of
-        Water -> gameGrid
-        Island _ -> clearCells col row gameGrid
+        Water -> problem
+        Island _ -> clearCells col row problem

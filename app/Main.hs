@@ -37,11 +37,13 @@ import           GI.GdkPixbuf ( Colorspace (..), Pixbuf, pixbufNewFromData )
 import qualified GI.Gtk as Gtk
 import           Paths_hashi ( getDataFileName )
 
-import           Constants ( backgroundHeight, backgroundWidth )
 import           Grid ( emptyGrid, updateGrid )
 import           Hashi ( solveProblem )
-import           Hashi.Show ( Draw (..), coordsToIsland )
-import           Hashi.Types ( Problem, State )
+import           Hashi.Show
+                   ( Draw (..), coordsToIsland, drawBackdrop, heightBackground
+                   , widthBackground
+                   )
+import           Hashi.Types ( Problem (..), State )
 
 renderDiagramToPixbuf :: Int -> Int -> Diagram B -> IO Pixbuf
 renderDiagramToPixbuf width height diagram =
@@ -73,7 +75,7 @@ renderDiagramToImage width height =
   in  renderDia Rasterific options
 
 activate :: Gtk.Application -> IORef AppState -> IO ()
-activate app appState = do
+activate app appStateRef = do
 
   grid <- new Gtk.Grid
     [ #columnSpacing := 5
@@ -91,12 +93,18 @@ activate app appState = do
         button `set` [ #sensitive := False
                      , #label := "Solved"
                      ]
-        appSolutions <$> readIORef appState >>= \case
+        appState <- readIORef appStateRef
+        case appSolutions appState of
           [state] -> do
+            let problem = appProblem appState
+                widthGrid = pWidthGrid problem
+                heightGrid = pHeightGrid problem
             texture <- textureNewForPixbuf =<< renderDiagramToPixbuf
-              backgroundWidth
-              backgroundHeight
-              (draw state)
+              (widthBackground widthGrid)
+              (heightBackground heightGrid)
+              (  draw state
+              <> drawBackdrop widthGrid heightGrid
+              )
             picture `set`
               [ #paintable := texture
               , #sensitive := False
@@ -111,15 +119,19 @@ activate app appState = do
 
   let onMouseClick :: Gtk.GestureClickPressedCallback
       onMouseClick _nPress x y = do
-        whenJust (coordsToIsland x y) $ \(row, col) -> do
-          oldGrid <- appGrid <$> readIORef appState
-          let gameGrid = updateGrid col row oldGrid
-              solutions = solveProblem gameGrid
-          writeIORef appState $ AppState gameGrid solutions
+        oldProblem <- appProblem <$> readIORef appStateRef
+        let widthGrid = pWidthGrid oldProblem
+            heightGrid = pHeightGrid oldProblem
+        whenJust (coordsToIsland widthGrid heightGrid x y) $ \(row, col) -> do
+          let problem = updateGrid col row oldProblem
+              solutions = solveProblem problem
+          writeIORef appStateRef $ AppState problem solutions
           texture <- textureNewForPixbuf =<< renderDiagramToPixbuf
-            backgroundWidth
-            backgroundHeight
-            (draw gameGrid)
+            (widthBackground widthGrid)
+            (heightBackground heightGrid)
+            (  draw problem
+            <> drawBackdrop widthGrid heightGrid
+            )
           picture `set` [ #paintable := texture ]
           case solutions of
             [] -> button `set`
@@ -138,12 +150,17 @@ activate app appState = do
   gestureClick <- new Gtk.GestureClick
     [ On #pressed onMouseClick ]
 
-  AppState gameGrid _ <- readIORef appState
+  problem <- appProblem <$> readIORef appStateRef
+
+  let widthGrid = pWidthGrid problem
+      heightGrid = pHeightGrid problem
 
   texture <- textureNewForPixbuf =<< renderDiagramToPixbuf
-    backgroundWidth
-    backgroundHeight
-    (draw gameGrid)
+    (widthBackground widthGrid)
+    (heightBackground heightGrid)
+    (  draw problem
+    <> drawBackdrop widthGrid heightGrid
+    )
 
   picture `set`
     [ #paintable := texture
@@ -168,16 +185,17 @@ activate app appState = do
   window.show
 
 data AppState = AppState
-  { appGrid :: Problem
+  { appProblem :: Problem
   , appSolutions :: [State]
   }
 
 main :: IO ()
 main = do
-  appState <- newIORef $ AppState emptyGrid []
+  appStateRef <-
+    newIORef $ AppState emptyGrid []
   app <- new Gtk.Application
     [ #applicationId := "com.pilgrem.hashi"
-    , On #activate (activate ?self appState)
+    , On #activate (activate ?self appStateRef)
     ]
   void $ app.run Nothing
 

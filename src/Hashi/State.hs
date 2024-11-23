@@ -17,16 +17,18 @@ import qualified Data.Map as Map
 import           Data.Maybe ( isJust )
 import           Hashi.Types
                    ( BridgeSet (..), Field (..), Index, Island, IslandState (..)
-                   , Problem, State
+                   , Problem (..), State
                    )
-import           Constants ( widthGrid, heightGrid )
 
 -- | Yields an initial state from a problem. Assumes that the top left location
 -- in the grid is @(0, 0)@.
 stateFromProblem :: Problem -> State
 stateFromProblem p = state
  where
-  state = Map.mapMaybeWithKey toIslandState p
+  grid = pGrid p
+  widthGrid = pWidthGrid p
+  heightGrid = pHeightGrid p
+  state = Map.mapMaybeWithKey toIslandState grid
   islands = Map.assocs state
 
   toIslandState :: Index -> Field -> Maybe IslandState
@@ -48,7 +50,7 @@ stateFromProblem p = state
   right (c, r) = find isIslandIndex [(cc, r) | cc <- [c + 1 .. widthGrid - 1]]
   bottom (c, r) = find isIslandIndex [(c, rr) | rr <- [r + 1 .. heightGrid - 1]]
   left (c, r) = find isIslandIndex [(cc, r) | cc <- [c - 1, c - 2 .. 0]]
-  isIslandIndex i = isJust (Map.lookup i p)
+  isIslandIndex i = isJust (Map.lookup i grid)
 
 -- | Would a bridge to the righthand neighbour of the first island (if any)
 -- cross a bridge to the bottom neighbour of the second island (if any)?

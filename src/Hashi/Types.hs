@@ -12,7 +12,7 @@ module Hashi.Types
   ( Index
   , Field (..)
   , isIsland
-  , Problem
+  , Problem (..)
   , BridgeSet (..)
   , GetBridge
   , IslandState (..)
@@ -41,7 +41,11 @@ isIsland (Island _) = True
 isIsland _          = False
 
 -- | Type synonym representing puzzles.
-type Problem = Map.Map Index Field
+data Problem = Problem
+  { pWidthGrid :: Int
+  , pHeightGrid :: Int
+  , pGrid :: Map.Map Index Field
+  }
 
 -- | Type representing the bridges of an island.
 data BridgeSet = BridgeSet
