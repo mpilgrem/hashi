@@ -8,7 +8,7 @@ and this project adheres to
 
 ## hashi-2.0
 
-* The application is changed from the command line to a GUI.
+* The application is changed from the command line to a GUI based on GTK4.
 * Input is no longer from a file but by clicking in the sea.
 
 ## hashi-1.0

@@ -9,7 +9,7 @@
 {-|
 Module      : Main
 Description : A solver of Hashiwokakero puzzles
-Copyright   : Copyright 2013 Harald Bögeholz
+Copyright   : Copyright 2024 Mike Pilgrem
 License     : BSD-2-Clause-Views
 Maintainer  : public@pilgrem.com
 Stability   : Experimental
@@ -20,24 +20,19 @@ module Main
   ( main
   ) where
 
-import           Codec.Picture.Types ( Image (..), PixelRGBA8 )
 import           Control.Monad ( void )
 import           Data.GI.Base ( AttrOp (..), get, new, on, set )
 import           Data.GI.Base.Utils ( whenJust )
 import           Data.IORef ( IORef, newIORef, readIORef, writeIORef )
 import qualified Data.Map as Map
-import qualified Data.Vector.Storable as SV
-import           Diagrams.Backend.Rasterific
-                   ( B, Rasterific (..), Options (..) )
-import           Diagrams.Prelude ( Diagram, dims2D, renderDia )
-import           Foreign.Marshal.Alloc ( free, mallocBytes )
-import           Foreign.Marshal.Utils ( copyBytes )
+import           Data.Text ( Text )
+import           Diagrams.Backend.Rasterific.Pixbuf ( renderDiagramToPixbuf )
 import           GI.Gdk ( textureNewForPixbuf )
-import           GI.GdkPixbuf ( Colorspace (..), Pixbuf, pixbufNewFromData )
 import qualified GI.Gtk as Gtk
 import           Paths_hashi ( getDataFileName )
 
-import           Grid ( emptyGrid, updateGrid )
+import           Constants ( widthGridDefault, heightGridDefault )
+import           Grid ( emptyProblem, updateGrid )
 import           Hashi ( solveProblem )
 import           Hashi.Show
                    ( Draw (..), coordsToIsland, drawBackdrop, heightBackground
@@ -45,52 +40,14 @@ import           Hashi.Show
                    )
 import           Hashi.Types ( Problem (..), State )
 
-renderDiagramToPixbuf :: Int -> Int -> Diagram B -> IO Pixbuf
-renderDiagramToPixbuf width height diagram =
-  imagePixelRGBA8ToPixbuf $ renderDiagramToImage width height diagram
-
-imagePixelRGBA8ToPixbuf :: Image PixelRGBA8 -> IO Pixbuf
-imagePixelRGBA8ToPixbuf image = do
-  let w = imageWidth image
-      h = imageHeight image
-      rowStride = w * 4 -- 4 bytes per PixelRGBA8
-      n = h * rowStride
-  SV.unsafeWith (imageData image) $ \ptr -> do
-     pixbufPtr <- mallocBytes n
-     copyBytes pixbufPtr ptr n
-     pixbufNewFromData
-       pixbufPtr
-       ColorspaceRgb
-       True -- hasAlpha
-       8 -- bitsPerSample
-       (fromIntegral w) -- width
-       (fromIntegral h) -- height
-       (fromIntegral rowStride) -- rowStride
-       (Just free) -- destroyFn
-
-renderDiagramToImage :: Int -> Int -> Diagram B -> Image PixelRGBA8
-renderDiagramToImage width height =
-  let size = dims2D (fromIntegral width) (fromIntegral height)
-      options = RasterificOptions size
-  in  renderDia Rasterific options
-
 activate :: Gtk.Application -> IORef AppState -> IO ()
 activate app appStateRef = do
 
-  problemInit <- appProblem <$> readIORef appStateRef
-
-  let widthGridInit = pWidthGrid problemInit
+  appStateInit <- readIORef appStateRef
+  let problemInit = appProblem appStateInit
+      solutionsInit = appSolutions appStateInit
+      widthGridInit = pWidthGrid problemInit
       heightGridInit = pHeightGrid problemInit
-
-  let minGridSize :: Problem -> (Int, Int)
-      minGridSize problem =
-        foldr maxPair (widthGridInit, heightGridInit) $ Map.keys grid
-       where
-        maxPair (x, y) (ax, ay) = (max x' ax, max y' ay)
-         where
-          x' = x + 1
-          y' = y + 1
-        grid = pGrid problem
 
   grid <- new Gtk.Grid
     [ #columnSpacing := 5
@@ -110,9 +67,7 @@ activate app appStateRef = do
 
   widthSpinButton `set` [ #halign := Gtk.AlignEnd ]
 
-  widthLabel <- Gtk.labelNew (Just "Width:")
-
-  widthLabel `set` [ #halign := Gtk.AlignStart ]
+  widthLabel <- mkLabel "Width:"
 
   heightSpinButton <- Gtk.spinButtonNewWithRange
     (fromIntegral heightGridInit)
@@ -121,21 +76,44 @@ activate app appStateRef = do
 
   heightSpinButton `set` [ #halign := Gtk.AlignEnd ]
 
-  heightLabel <- Gtk.labelNew (Just "Height:")
+  heightLabel <- mkLabel "Height:"
 
-  heightLabel `set` [ #halign := Gtk.AlignStart ]
+  picture <- new Gtk.Picture
+    [ #canShrink := False
+    , #contentFit := Gtk.ContentFitCover
+    ]
 
-  #append box widthLabel
-  #append box widthSpinButton
-  #append box heightLabel
-  #append box heightSpinButton
+  gestureClick <- new Gtk.GestureClick []
+
+  button <- new Gtk.Button []
+
+  let updateButton :: [State] -> IO ()
+      updateButton solutions = case solutions of
+        [] -> button `set`
+          [ #label := "No solution"
+          , #sensitive := False
+          ]
+        [_] -> button `set`
+          [ #label := "Solve"
+          , #sensitive := True
+          ]
+        _ -> button `set`
+          [ #label := "No unique solution"
+          , #sensitive := False
+          ]
+
+  let updateSensitivity :: Bool -> IO ()
+      updateSensitivity isSensitive = do
+        picture `set` [ #sensitive := isSensitive ]
+        widthSpinButton `set` [ #sensitive := isSensitive ]
+        heightSpinButton `set` [ #sensitive := isSensitive ]
 
   let setMinGridSize :: Problem -> IO ()
       setMinGridSize problem = do
-        (widthGridMin, widthGridMax) <- Gtk.spinButtonGetRange widthSpinButton
-        (heightGridMin, heightGridMax) <-
-          Gtk.spinButtonGetRange heightSpinButton
-        let (newWidthGridMin, newHeightGridMin) = minGridSize problem
+        (_, widthGridMax) <- Gtk.spinButtonGetRange widthSpinButton
+        (_, heightGridMax) <- Gtk.spinButtonGetRange heightSpinButton
+        let (newWidthGridMin, newHeightGridMin) =
+              minGridSize widthGridInit heightGridInit problem
         Gtk.spinButtonSetRange
           widthSpinButton
           (fromIntegral newWidthGridMin)
@@ -145,126 +123,82 @@ activate app appStateRef = do
           (fromIntegral newHeightGridMin)
           heightGridMax
 
-  picture <- Gtk.pictureNew
-
-  let onButtonClick :: Gtk.Button -> IO ()
-      onButtonClick button = do
-        button `set` [ #sensitive := False
-                     , #label := "Solved"
-                     ]
+  let onButtonClick :: IO ()
+      onButtonClick = do
         appState <- readIORef appStateRef
-        case appSolutions appState of
-          [state] -> do
-            let problem = appProblem appState
-                widthGrid = pWidthGrid problem
+        let problem = appProblem appState
+        newAppState <- if appSolved appState
+          then do
+            let widthGrid = pWidthGrid problem
                 heightGrid = pHeightGrid problem
-            texture <- textureNewForPixbuf =<< renderDiagramToPixbuf
-              (widthBackground widthGrid)
-              (heightBackground heightGrid)
-              (  draw state
-              <> drawBackdrop widthGrid heightGrid
-              )
-            picture `set`
-              [ #paintable := texture
-              , #sensitive := False
-              ]
-            widthSpinButton `set` [ #sensitive := False ]
-            heightSpinButton `set` [ #sensitive := False ]
-          _ -> pure ()
+                newProblem = emptyProblem widthGrid heightGrid
+            setMinGridSize newProblem
+            updatePicture picture newProblem newProblem
+            updateSensitivity True
+            updateButton []
+            pure $ appState
+              { appProblem = newProblem
+              , appSolutions = []
+              , appSolved = False
+              }
+          else do
+            button `set` [ #label := "Reset" ]
+            case appSolutions appState of
+              [state] -> do
+                updatePicture picture problem state
+                updateSensitivity False
+              _ -> pure ()
+            pure $ appState { appSolved = True }
+        writeIORef appStateRef newAppState
 
-  button <- new Gtk.Button
-    [ #label := "No solution"
-    , #sensitive := False
-    , On #clicked (onButtonClick ?self)
-    ]
+  let updateProblem :: AppState -> Problem -> IO ()
+      updateProblem appState problem = do
+        let solutions = solveProblem problem
+        writeIORef appStateRef $ appState
+          { appProblem = problem
+          , appSolutions = solutions
+          }
+        setMinGridSize problem
+        updatePicture picture problem problem
+        updateButton solutions
 
   let onMouseClick :: Gtk.GestureClickPressedCallback
       onMouseClick _nPress x y = do
-        oldProblem <- appProblem <$> readIORef appStateRef
-        let widthGrid = pWidthGrid oldProblem
+        appState <- readIORef appStateRef
+        let oldProblem = appProblem appState
+            widthGrid = pWidthGrid oldProblem
             heightGrid = pHeightGrid oldProblem
         whenJust (coordsToIsland widthGrid heightGrid x y) $ \(row, col) -> do
-          let problem = updateGrid col row oldProblem
-              solutions = solveProblem problem
-          writeIORef appStateRef $ AppState problem solutions
-          setMinGridSize problem
-          texture <- textureNewForPixbuf =<< renderDiagramToPixbuf
-            (widthBackground widthGrid)
-            (heightBackground heightGrid)
-            (  draw problem
-            <> drawBackdrop widthGrid heightGrid
-            )
-          picture `set` [ #paintable := texture ]
-          case solutions of
-            [] -> button `set`
-              [ #label := "No solution"
-              , #sensitive := False
-              ]
-            [_] -> button `set`
-              [ #label := "Solve"
-              , #sensitive := True
-              ]
-            _ -> button `set`
-              [ #label := "No unique solution"
-              , #sensitive := False
-              ]
+          updateProblem appState $ updateGrid col row oldProblem
 
   let onValueChanged :: Gtk.SpinButtonValueChangedCallback
       onValueChanged = do
         newWidthGrid <- floor <$> get widthSpinButton #value
         newHeightGrid <- floor <$> get heightSpinButton #value
         appState <- readIORef appStateRef
-        let oldProblem = appProblem appState
-            problem = oldProblem
-              { pWidthGrid = newWidthGrid
-              , pHeightGrid = newHeightGrid
-              }
-            solutions = solveProblem problem
-        writeIORef appStateRef $ AppState problem solutions
-        texture <- textureNewForPixbuf =<< renderDiagramToPixbuf
-          (widthBackground newWidthGrid)
-          (heightBackground newHeightGrid)
-          (  draw problem
-          <> drawBackdrop newWidthGrid newHeightGrid
-          )
-        picture `set` [ #paintable := texture ]
-        case solutions of
-          [] -> button `set`
-            [ #label := "No solution"
-            , #sensitive := False
-            ]
-          [_] -> button `set`
-            [ #label := "Solve"
-            , #sensitive := True
-            ]
-          _ -> button `set`
-            [ #label := "No unique solution"
-            , #sensitive := False
-            ]
+        updateProblem appState $ (appProblem appState)
+          { pWidthGrid = newWidthGrid
+          , pHeightGrid = newHeightGrid
+          }
 
-  on widthSpinButton #valueChanged onValueChanged
-  on heightSpinButton #valueChanged onValueChanged
+  void $ on button #clicked onButtonClick
+  void $ on widthSpinButton #valueChanged onValueChanged
+  void $ on heightSpinButton #valueChanged onValueChanged
+  void $ on gestureClick #pressed onMouseClick
 
-  gestureClick <- new Gtk.GestureClick
-    [ On #pressed onMouseClick ]
-
-  texture <- textureNewForPixbuf =<< renderDiagramToPixbuf
-    (widthBackground widthGridInit)
-    (heightBackground heightGridInit)
-    (  draw problemInit
-    <> drawBackdrop widthGridInit heightGridInit
-    )
-
-  picture `set`
-    [ #paintable := texture
-    , #canShrink := False
-    ]
-
-  #addController picture gestureClick
+  updateButton solutionsInit
+  updatePicture picture problemInit problemInit
 
   #attach grid button 0 0 1 1
   #attach grid picture 0 1 1 1
   #attach grid box 0 2 1 1
+
+  #append box widthLabel
+  #append box widthSpinButton
+  #append box heightLabel
+  #append box heightSpinButton
+
+  #addController picture gestureClick
 
   image <- iconImage
   headerBar <- new Gtk.HeaderBar []
@@ -279,15 +213,43 @@ activate app appStateRef = do
     ]
   window.show
 
+mkLabel :: Text -> IO Gtk.Label
+mkLabel label = new Gtk.Label
+  [ #label := label
+  , #halign := Gtk.AlignStart
+  ]
+
+minGridSize :: Int -> Int -> Problem -> (Int, Int)
+minGridSize widthGridMin heightGridMin problem =
+  foldr maxPair (widthGridMin, heightGridMin) $ Map.keys (pGrid problem)
+ where
+  maxPair (x, y) (ax, ay) = (max x' ax, max y' ay)
+   where
+    x' = x + 1
+    y' = y + 1
+
+updatePicture :: Draw d => Gtk.Picture -> Problem -> d -> IO ()
+updatePicture picture problem item = do
+  let widthGrid = pWidthGrid problem
+      heightGrid = pHeightGrid problem
+  texture <- textureNewForPixbuf =<< renderDiagramToPixbuf
+    (widthBackground widthGrid)
+    (heightBackground heightGrid)
+    (  draw item
+    <> drawBackdrop widthGrid heightGrid
+    )
+  picture `set` [ #paintable := texture ]
+
 data AppState = AppState
   { appProblem :: Problem
   , appSolutions :: [State]
+  , appSolved :: Bool
   }
 
 main :: IO ()
 main = do
-  appStateRef <-
-    newIORef $ AppState emptyGrid []
+  let problemInit = emptyProblem widthGridDefault heightGridDefault
+  appStateRef <- newIORef $ AppState problemInit [] False
   app <- new Gtk.Application
     [ #applicationId := "com.pilgrem.hashi"
     , On #activate (activate ?self appStateRef)

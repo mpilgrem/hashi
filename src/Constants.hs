@@ -1,3 +1,13 @@
+{-|
+Module      : Constants
+Description : Constants affecting display of Hashiwokakero puzzles
+Copyright   : Copyright 2024 Mike Pilgrem
+License     : BSD-2-Clause-Views
+Maintainer  : public@pilgrem.com
+Stability   : Experimental
+Portability : Portable
+-}
+
 module Constants
   ( widthGridDefault
   , heightGridDefault

@@ -42,9 +42,7 @@ class Draw a where
 
 instance Draw Problem where
 
-  draw problem = drawMap draw Nothing grid
-   where
-    grid = pGrid problem
+  draw problem = drawMap draw Nothing (pGrid problem)
 
 instance Draw (Index, Field) where
 
@@ -65,10 +63,7 @@ drawMap ::
   -> Map.Map Index a
   -> Diagram B
 drawMap drawItem mDrawBridges m =
-     mconcat
-       (  map drawItem items
-       <> maybe [] (\f -> map f items) mDrawBridges
-       )
+  mconcat (map drawItem items <> maybe [] (\f -> map f items) mDrawBridges)
  where
   items = Map.assocs m
 
@@ -121,8 +116,8 @@ coordsToIsland widthGrid heightGrid x y =
  where
   x' = (x - margin') / cellDim'
   y' = (heightBackground' heightGrid - y - margin') / cellDim'
-  col = floor x'
-  row = floor y'
+  col = floor x' :: Int
+  row = floor y' :: Int
 
 widthBackground :: Int -> Int
 widthBackground widthGrid = widthGrid * cellDim + 2 * margin

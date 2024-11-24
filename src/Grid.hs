@@ -2,19 +2,28 @@
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE TypeFamilies              #-}
 
+{-|
+Module      : Grid
+Description : Functions manipulating a Hashiwokakero puzzle
+Copyright   : Copyright 2024 Mike Pilgrem
+License     : BSD-2-Clause-Views
+Maintainer  : public@pilgrem.com
+Stability   : Experimental
+Portability : Portable
+-}
+
 module Grid
-  ( emptyGrid
+  ( emptyProblem
   , updateGrid
   ) where
 
 import qualified Data.Map as Map
 import           Data.Maybe ( fromMaybe )
 
-import           Constants ( heightGridDefault, widthGridDefault )
 import           Hashi.Types ( Field (..), Problem (..) )
 
-emptyGrid :: Problem
-emptyGrid = Problem widthGridDefault heightGridDefault Map.empty
+emptyProblem :: Int -> Int -> Problem
+emptyProblem widthGrid heightGrid = Problem widthGrid heightGrid Map.empty
 
 getCell :: Problem -> Int -> Int -> Field
 getCell problem col row =

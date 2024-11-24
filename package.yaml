@@ -21,21 +21,11 @@ data-dir: resources
 
 data-files:
 - haskell-logo24x24.png
+- haskell-logo.res
 
 dependencies:
 - base >= 4.7 && < 5
-- JuicyPixels
 - containers
-- diagrams-lib
-- diagrams-lib
-- diagrams-rasterific
-- gi-gdk
-- gi-gdkpixbuf
-- gi-gtk >= 4.0
-- haskell-gi-base
-- template-haskell
-- text
-- vector
 
 ghc-options:
 - -Wall
@@ -51,6 +41,12 @@ ghc-options:
 
 library:
   source-dirs: src
+  dependencies:
+  - JuicyPixels
+  - diagrams-lib
+  - diagrams-rasterific
+  - gi-gdkpixbuf
+  - vector
 
 executables:
   hashi-solve:
@@ -64,4 +60,8 @@ executables:
     - -optl-mwindows
     - -optl=resources/haskell-logo.res
     dependencies:
+    - gi-gdk
+    - gi-gtk >= 4.0
+    - haskell-gi-base
     - hashi
+    - text
