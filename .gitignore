@@ -5,3 +5,6 @@
 # Solution files
 *.solution.eps
 *.solution.svg
+
+# Packaging directory
+bin/
