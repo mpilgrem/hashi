@@ -31,21 +31,22 @@ solveProblem = concatMap solveState . narrowAll . stateFromProblem
   narrowAll state = narrow (Map.keysSet state) state
 
 solveState :: State -> [State]
-solveState state =
-  case (connectedComponents, find uncertain islands) of
-    -- Nothing uncertain and one set of connected components: solved
-    (_ :| [], Nothing) -> [state]
-    -- Otherwise, if nothing uncertain: no solution
-    (_, Nothing) -> []
-    -- Something uncertain and one set of connected components: try to solve
-    (_ :| [], Just island) -> solveForIsland island
-    -- Otherwise, if something uncertain ...
-    (ccs, Just island)  -> if all unfinished ccs
-      -- All of the sets of connected components are unfinished: try to solve
-      then solveForIsland island
-      -- One or more of the sets of connected components are finished: no
-      -- solution
-      else []
+solveState state
+  | Map.null state = []
+  | otherwise = case (connectedComponents, find uncertain islands) of
+      -- Nothing uncertain and one set of connected components: solved
+      (_ :| [], Nothing) -> [state]
+      -- Otherwise, if nothing uncertain: no solution
+      (_, Nothing) -> []
+      -- Something uncertain and one set of connected components: try to solve
+      (_ :| [], Just island) -> solveForIsland island
+      -- Otherwise, if something uncertain ...
+      (ccs, Just island)  -> if all unfinished ccs
+        -- All of the sets of connected components are unfinished: try to solve
+        then solveForIsland island
+        -- One or more of the sets of connected components are finished: no
+        -- solution
+        else []
  where
   islands = Map.assocs state
   uncertain (_, islandState) = isUncertain islandState

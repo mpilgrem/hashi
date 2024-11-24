@@ -10,10 +10,10 @@ module Constants
   ) where
 
 widthGridDefault :: Int
-widthGridDefault = 10
+widthGridDefault = 6
 
 heightGridDefault :: Int
-heightGridDefault = 6
+heightGridDefault = 4
 
 radius :: Int
 radius = 20

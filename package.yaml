@@ -25,13 +25,10 @@ data-files:
 dependencies:
 - base >= 4.7 && < 5
 - JuicyPixels
-- array
-- colour
 - containers
 - diagrams-lib
 - diagrams-lib
 - diagrams-rasterific
-- diagrams-svg
 - gi-gdk
 - gi-gdkpixbuf
 - gi-gtk >= 4.0

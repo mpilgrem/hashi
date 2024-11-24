@@ -1,6 +1,5 @@
 {-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE ImplicitParams            #-}
-{-# LANGUAGE LambdaCase                #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE OverloadedLabels          #-}
 {-# LANGUAGE OverloadedRecordDot       #-}
@@ -23,9 +22,10 @@ module Main
 
 import           Codec.Picture.Types ( Image (..), PixelRGBA8 )
 import           Control.Monad ( void )
-import           Data.GI.Base ( AttrOp (..), new, set )
+import           Data.GI.Base ( AttrOp (..), get, new, on, set )
 import           Data.GI.Base.Utils ( whenJust )
 import           Data.IORef ( IORef, newIORef, readIORef, writeIORef )
+import qualified Data.Map as Map
 import qualified Data.Vector.Storable as SV
 import           Diagrams.Backend.Rasterific
                    ( B, Rasterific (..), Options (..) )
@@ -77,6 +77,21 @@ renderDiagramToImage width height =
 activate :: Gtk.Application -> IORef AppState -> IO ()
 activate app appStateRef = do
 
+  problemInit <- appProblem <$> readIORef appStateRef
+
+  let widthGridInit = pWidthGrid problemInit
+      heightGridInit = pHeightGrid problemInit
+
+  let minGridSize :: Problem -> (Int, Int)
+      minGridSize problem =
+        foldr maxPair (widthGridInit, heightGridInit) $ Map.keys grid
+       where
+        maxPair (x, y) (ax, ay) = (max x' ax, max y' ay)
+         where
+          x' = x + 1
+          y' = y + 1
+        grid = pGrid problem
+
   grid <- new Gtk.Grid
     [ #columnSpacing := 5
     , #rowSpacing := 5
@@ -85,6 +100,50 @@ activate app appStateRef = do
     , #marginStart := 5
     , #marginTop := 5
     ]
+
+  box <- Gtk.boxNew Gtk.OrientationHorizontal 5
+
+  widthSpinButton <- Gtk.spinButtonNewWithRange
+    (fromIntegral widthGridInit)
+    20.0
+    1.0
+
+  widthSpinButton `set` [ #halign := Gtk.AlignEnd ]
+
+  widthLabel <- Gtk.labelNew (Just "Width:")
+
+  widthLabel `set` [ #halign := Gtk.AlignStart ]
+
+  heightSpinButton <- Gtk.spinButtonNewWithRange
+    (fromIntegral heightGridInit)
+    12.0
+    1.0
+
+  heightSpinButton `set` [ #halign := Gtk.AlignEnd ]
+
+  heightLabel <- Gtk.labelNew (Just "Height:")
+
+  heightLabel `set` [ #halign := Gtk.AlignStart ]
+
+  #append box widthLabel
+  #append box widthSpinButton
+  #append box heightLabel
+  #append box heightSpinButton
+
+  let setMinGridSize :: Problem -> IO ()
+      setMinGridSize problem = do
+        (widthGridMin, widthGridMax) <- Gtk.spinButtonGetRange widthSpinButton
+        (heightGridMin, heightGridMax) <-
+          Gtk.spinButtonGetRange heightSpinButton
+        let (newWidthGridMin, newHeightGridMin) = minGridSize problem
+        Gtk.spinButtonSetRange
+          widthSpinButton
+          (fromIntegral newWidthGridMin)
+          widthGridMax
+        Gtk.spinButtonSetRange
+          heightSpinButton
+          (fromIntegral newHeightGridMin)
+          heightGridMax
 
   picture <- Gtk.pictureNew
 
@@ -109,6 +168,8 @@ activate app appStateRef = do
               [ #paintable := texture
               , #sensitive := False
               ]
+            widthSpinButton `set` [ #sensitive := False ]
+            heightSpinButton `set` [ #sensitive := False ]
           _ -> pure ()
 
   button <- new Gtk.Button
@@ -126,6 +187,7 @@ activate app appStateRef = do
           let problem = updateGrid col row oldProblem
               solutions = solveProblem problem
           writeIORef appStateRef $ AppState problem solutions
+          setMinGridSize problem
           texture <- textureNewForPixbuf =<< renderDiagramToPixbuf
             (widthBackground widthGrid)
             (heightBackground heightGrid)
@@ -147,19 +209,50 @@ activate app appStateRef = do
               , #sensitive := False
               ]
 
+  let onValueChanged :: Gtk.SpinButtonValueChangedCallback
+      onValueChanged = do
+        newWidthGrid <- floor <$> get widthSpinButton #value
+        newHeightGrid <- floor <$> get heightSpinButton #value
+        appState <- readIORef appStateRef
+        let oldProblem = appProblem appState
+            problem = oldProblem
+              { pWidthGrid = newWidthGrid
+              , pHeightGrid = newHeightGrid
+              }
+            solutions = solveProblem problem
+        writeIORef appStateRef $ AppState problem solutions
+        texture <- textureNewForPixbuf =<< renderDiagramToPixbuf
+          (widthBackground newWidthGrid)
+          (heightBackground newHeightGrid)
+          (  draw problem
+          <> drawBackdrop newWidthGrid newHeightGrid
+          )
+        picture `set` [ #paintable := texture ]
+        case solutions of
+          [] -> button `set`
+            [ #label := "No solution"
+            , #sensitive := False
+            ]
+          [_] -> button `set`
+            [ #label := "Solve"
+            , #sensitive := True
+            ]
+          _ -> button `set`
+            [ #label := "No unique solution"
+            , #sensitive := False
+            ]
+
+  on widthSpinButton #valueChanged onValueChanged
+  on heightSpinButton #valueChanged onValueChanged
+
   gestureClick <- new Gtk.GestureClick
     [ On #pressed onMouseClick ]
 
-  problem <- appProblem <$> readIORef appStateRef
-
-  let widthGrid = pWidthGrid problem
-      heightGrid = pHeightGrid problem
-
   texture <- textureNewForPixbuf =<< renderDiagramToPixbuf
-    (widthBackground widthGrid)
-    (heightBackground heightGrid)
-    (  draw problem
-    <> drawBackdrop widthGrid heightGrid
+    (widthBackground widthGridInit)
+    (heightBackground heightGridInit)
+    (  draw problemInit
+    <> drawBackdrop widthGridInit heightGridInit
     )
 
   picture `set`
@@ -171,6 +264,7 @@ activate app appStateRef = do
 
   #attach grid button 0 0 1 1
   #attach grid picture 0 1 1 1
+  #attach grid box 0 2 1 1
 
   image <- iconImage
   headerBar <- new Gtk.HeaderBar []
@@ -178,9 +272,10 @@ activate app appStateRef = do
 
   window <- new Gtk.ApplicationWindow
     [ #application := app
-    , #title := "Create Hashi problem"
+    , #title := "Hashi solver"
     , #titlebar := headerBar
     , #child := grid
+    , #resizable := False
     ]
   window.show
 
