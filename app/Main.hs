@@ -58,6 +58,15 @@ activate app appStateRef = do
     , #marginTop := 5
     ]
 
+  -- If the Picture is not appended to a horizontal Box, unwanted vertical
+  -- expansion occurs if the natural width of the Picture is less than the
+  -- available width provided by the Grid. See:
+  -- https://gitlab.gnome.org/GNOME/gtk/-/issues/5735
+  pictureBox <- new Gtk.Box
+    [ #orientation := Gtk.OrientationHorizontal
+    , #halign := Gtk.AlignCenter
+    ]
+
   box <- Gtk.boxNew Gtk.OrientationHorizontal 5
 
   widthSpinButton <- Gtk.spinButtonNewWithRange
@@ -190,8 +199,10 @@ activate app appStateRef = do
   updatePicture picture problemInit problemInit
 
   #attach grid button 0 0 1 1
-  #attach grid picture 0 1 1 1
+  #attach grid pictureBox 0 1 1 1
   #attach grid box 0 2 1 1
+
+  #append pictureBox picture
 
   #append box widthLabel
   #append box widthSpinButton
